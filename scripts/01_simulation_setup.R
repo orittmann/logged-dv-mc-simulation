@@ -142,3 +142,56 @@ mean(pred_Y_ova)
 median(pred_Y_ova)
 median(dta$Y)
 mean(dta$Y)
+
+
+
+# Standard Simulation step 1-3
+
+sim_function <- function(lm_obj, nsim = 1000, scenario){
+  # Step 1: Get the regression coefficients
+  beta_hat <- coef(lm_obj)
+  # Step 2: Generate sampling distribution
+  # Step 2.1: Get the variance-covariance matrix.
+  V_hat <- vcov(lm_obj)
+  # Step 2.2: Draw from the multivariate normal distribution.
+  library(MASS)
+  S <- mvrnorm(nsim, beta_hat, V_hat)
+  # Step 3: Choose interesting covariate values.
+  # Make sure the matrix multiplication also works for single scenarios
+  if(is.null(nrow(scenario))){
+    scenario <- matrix(scenario, nrow = 1)
+  }
+  # Print a message if the scenario does not fit the regression.
+  if(ncol(scenario) != length(lm_obj$coefficients)){
+    return(cat("The scenario has the wrong number of variables."))
+  }
+  # Step 4: Calculate Quantities of Interest -
+  # Expected Values
+  EV <- S %*% t(scenario)
+  
+  return(EV)
+}
+
+
+# average case approach
+
+ac_EV <- sim_function(lm_obj = reg1,
+                      nsim = 1000,
+                      scenario = cbind(1, mean(dta$X1), mean(dta$X2)))
+
+
+mean(exp(ac_EV))
+median(exp(ac_EV))
+exp(reg1$coefficients %*% c(1, mean(dta$X1), mean(dta$X2)))
+
+
+# observed value approach
+
+ovs_EV <- sim_function(lm_obj = reg1,
+                       nsim = 1000,
+                       scenario = cbind(1, dta$X1, dta$X2))
+
+mean(dta$Y)
+mean(exp(ovs_EV))
+median(exp(ovs_EV))
+median(dta$Y)
