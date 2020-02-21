@@ -12,4 +12,4 @@ pkgs <-
 lapply(pkgs[!(pkgs %in% installed.packages())], install.packages)
 
 ## Load all packages to library and adjust options
-lapply(pkgs, library, character.only = TRUE)
+print(sapply(pkgs, require, character.only = TRUE))

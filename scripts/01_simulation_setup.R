@@ -1,3 +1,4 @@
+source("scripts/00_setup.R")
 
 # population size
 m <- 10000
