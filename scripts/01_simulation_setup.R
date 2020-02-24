@@ -195,3 +195,72 @@ mean(dta$Y)
 mean(exp(ovs_EV))
 median(exp(ovs_EV))
 median(dta$Y)
+
+
+
+
+### Investigate Error (disregarding estimation uncertainty) ###
+
+# variation in theta, hold sigma^2 constant
+
+theta <- seq(0, 100, 1)
+
+bias_data <- data.frame("theta" = theta,
+                        "mean_Y" = NA,
+                        "median_Y" = NA)
+
+mean_median_Y <- function(theta, sigma_est){
+  mean_Y <- mean(exp(rnorm(10000, theta, sigma_est)))
+  median_Y <- median(exp(rnorm(10000, theta, sigma_est)))
+  
+  return(c(mean_Y, median_Y))
+}
+
+mean_median_Y(theta[1], sigma_est = 0.5)
+
+for (i in 1:length(theta)) {
+  mean_median <- mean_median_Y(theta[i], sigma_est = 0.5)
+  bias_data$mean_Y[i] <- mean_median[1]
+  bias_data$median_Y[i] <- mean_median[2]
+}
+
+
+pdf("error_exp_theta.pdf")
+plot(x = exp(theta), y = exp(theta),
+     type = "l",
+     col = "red",
+     xlab = expression(e^theta),
+     ylab = "",
+     xaxt = "n", yaxt = "n",
+     bty = "n",
+     ylim = c(min(exp(theta)), max(bias_data$mean_Y)),
+     asp = 1,
+     main = expression("Difference between " ~ e^theta ~ "and E(Y)"))  
+axis(1,
+     at = c(exp(min(theta)), exp(max(theta))),
+     labels = c(expression(e^0), expression(e^100)))
+axis(2,
+     las = 2,
+     at = c(exp(min(theta)), exp(max(theta))),
+     labels = c(expression(e^0), expression(e^100)))
+
+lines(x = exp(theta),
+      y = bias_data$mean_Y,
+      col = "black")
+#lines(x = exp(theta),
+#      y = bias_data$median_Y,
+#      col = "blue",
+#      lty = "dashed")
+
+midscale <- (exp(min(theta)) + exp(max(theta))) / 2
+
+text(x = midscale,
+     y = midscale - 1/6*midscale,
+     labels = expression(e^theta),
+     col = "red")
+text(x = midscale,
+     y = midscale + 1/3*midscale,
+     labels = expression(E(Y)),
+     col = "black")
+dev.off()
+
