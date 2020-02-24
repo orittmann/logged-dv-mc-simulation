@@ -272,6 +272,12 @@ lines(x = exp(theta),
 #      col = "blue",
 #      lty = "dashed")
 
+lines(x = exp(theta),
+      y = exp(theta) * exp((0.5^2) / 2),
+      col = "green",
+      lty = "dashed")
+
+
 midscale <- (exp(min(theta)) + exp(max(theta))) / 2
 
 text(x = midscale + 1/5*midscale,
@@ -307,26 +313,33 @@ bias_data2 <- data.frame("sigma2" = sigma2,
 
 
 for (i in 1:nrow(bias_data2)) {
-  mean_median <- mean_median_Y(theta = theta_fix, sigma_est = bias_data2$sigma2[i], m = 30000000)
+  mean_median <- mean_median_Y(theta = theta_fix, sigma_est = bias_data2$sigma2[i], m = 10000000)
   bias_data2$mean_Y[i] <- mean_median[1]
   bias_data2$median_Y[i] <- mean_median[2]
 }
 
-bias_data2$dif <- rep(exp(2), 100) - bias_data2$mean_Y
+bias_data2$dif <- bias_data2$mean_Y - rep(exp(2), 100)
 
+pdf("figures/error_sigma2.pdf")
 plot(x = bias_data2$sigma2, 
      y = bias_data2$dif,
      type = "l",
      col = "black",
      xlab = expression(sigma^2),
      ylab = expression(E(Y) - e^theta),
-     ylim = c(min(bias_data2$dif),
-                  1/5*abs(min(bias_data2$dif))),
+     ylim = c(-1/5*abs(min(bias_data2$dif)),
+             max(bias_data2$dif)),
+     xlim = c(0, 5),
      xaxt = "n", yaxt = "n",
      bty = "n",
-     main = expression("Difference between" ~ e^theta ~ "and E(Y) conditional on" ~ sigma^2))  
+     main = expression("Difference between" ~ e^theta ~ "and E(Y) conditional on" ~ sigma^2 ~ "," ~ theta == 1))  
 abline(h = 0,
        lty = "dashed",
        col = "black")
 axis(1,
      at = min(bias_data2$sigma2):max(bias_data2$sigma2))
+lines(x = bias_data2$sigma2,
+      y = exp(theta_fix) * exp((bias_data2$sigma2^2)/2),
+      lty = "dashed",
+      col = "green")
+dev.off()
