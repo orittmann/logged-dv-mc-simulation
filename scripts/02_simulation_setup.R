@@ -20,7 +20,7 @@ varcov <- sds_mat %*% cor_mat %*% sds_mat
 b <- c(2, 0.3, -0.5)
 
 # Choose sigma.est
-sigma_est <- 0.5
+sigma_est <- 1
 
 gen_pop <- function(m,          # population size
                     mus,        # means
@@ -48,33 +48,10 @@ pop <- gen_pop(
 
 dta <- pop[sample(1:m, size = 100),]
 
-# Plot the data
-
-plot(dta$X1, log(dta$Y))
-plot(dta$X1, dta$Y)
-
-plot(dta$X2, log(dta$Y))
-plot(dta$X2, dta$Y)
 
 reg1 <- lm(log(Y) ~ X1 + X2, data = dta)
 
-mean(dta$Y)
-median(dta$Y)
-mean(log(dta$Y))
 
-mu_Y_hat <- cbind(1, dta$X1, dta$X2) %*% coef(reg1)
-mean(mu_Y_hat)
-
-mu_Y_hat <-
-  cbind(1, mean(dta$X1), mean(dta$X2)) %*% coef(reg1) + var(reg1$residuals) /
-  2
-mu_Y_hat
-
-median(log(dta$Y))
-
-median(dta$Y)
-exp(mu_Y_hat)
-mean(dta$Y)
 
 mm <- cbind(1, dta$X1, dta$X2)
 
@@ -82,9 +59,9 @@ M <- 1000
 nsim <- 1000
 
 sim_list <- list()
-
+S <- mvrnorm(M, coef(reg1), vcov(reg1))
 for (sim in 1:nsim) {
-  S <- mvrnorm(M, coef(reg1), vcov(reg1))
+
   
   mu_Y_ova <- S %*% t(mm)
   
@@ -101,8 +78,62 @@ for (sim in 1:nsim) {
   cat(sim, "\n")
 }
 
-mean_y <- sapply(sim_list, function(x)
-  mean((exp(x))))
+sim_array <- array(unlist(sim_list), dim = c(M, nrow(mm), nsim))
+
+exp_sim_array <- exp(sim_array)
+
+mean_y <- rowMeans(apply(exp_sim_array, c(1,2), mean))
+true_value <- mean(exp(mm%*%b) * exp(sigma_est^2 / 2))
+# 
+
+hist(mean_y)
+true_value
+mean(mean_y)
+quants <- quantile(mean_y, c(0.025,0.5, 0.975))
+plot(density(mean_y))
+abline(v = quants, lty = "dashed" )
+abline(v = mean(mean_y), col = "red")
+abline(v = true_value)
+median_y <- apply(apply(exp_sim_array, c(1,2), median), 1, median)
+true_value_median <- median(exp(mm%*%b))
+# 
+hist(median_y)
+true_value_median
+mean(median_y)
+
+hist(dta$Y)
+mean(dta$Y)
+median(dta$Y)
+
+hist(mean_y)
+true_value
+mean(mean_y)
+
+
+
+
+lower <- apply(mean_y, 2, quantile, 0.025)
+upper <- apply(mean_y, 2, quantile, 0.975)
+summary_df <- cbind(true_value, apply(mean_y, 2, mean), lower,upper, true_value>lower & true_value<upper)
+apply(summary_df, 2, mean)
+
+
+mean(log(dta$Y))
+true_value <- (mm%*%b) 
+mean(true_value)
+sim_list[[nsim]] == pred_mu_Y_ova
+
+
+mean_y <- apply(sim_array, c(1,2), mean)
+#mean_y <- sapply(sim_list, function(x) apply((x),2 , mean))
+#mean_y <- t(pred_mu_Y_ova)
+lower <- apply(mean_y, 2, quantile, 0.025)
+upper <- apply(mean_y, 2, quantile, 0.975)
+cbind(true_value, apply(mean_y, 2, mean), lower,upper, true_value>lower & true_value<upper)
+
+hist(mean_y)
+mean(true_value)
+
 
 median_y <- sapply(sim_list, function(x)
   median((exp(x))))

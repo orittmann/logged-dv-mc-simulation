@@ -1,12 +1,18 @@
 library(viridis)
+library(MASS)
 
 n_draws <- 100
-orig_mean <- 0
-orig_sd <- 1.2
+X <- cbind(1, rnorm(n_draws), rbinom(n_draws, size = 1, prob = 0.5))
+betas <- c(0, 1, 2)
+orig_mean <- X %*% betas
+orig_sd <- 0.5
 ln_y <- rnorm(n_draws, mean = orig_mean, sd = orig_sd)
+
+plot(X[,2], ln_y, col = X[,3]+1)
 
 y <- exp(ln_y)
 
+plot(X[,2], y, col = X[,3] + 1)
 
 dens_ln_y <- density(ln_y, from = min(ln_y), to = max(ln_y))
 dens_y <- density(y, from = min(y), to = max(y))
@@ -27,7 +33,7 @@ plot(
   main = paste0(
     n_draws,
     " draws from ln(y) and y for ln(y) = N(",
-    orig_mean,
+    mean(orig_mean),
     ", ",
     orig_sd^2,
     ")"
@@ -93,7 +99,26 @@ legend(
 )
 
 
+betas <- solve(t(X) %*% X) %*% t(X) %*% ln_y
+e <- (diag(1, n_draws) - X %*%  solve(t(X) %*% X) %*% t(X)) %*% ln_y
+sigma_sq <- t(e) %*% e / (n_draws - ncol(X))
+
+cov <- as.numeric(sigma_sq) * solve(t(X) %*% X)
+
 nsim <- 1000
+
+S <- mvrnorm(nsim, betas, cov)
+Xb <- S %*% t(X)
+pred_ln_y <- Xb + rnorm(nsim, 0, sd = sqrt(sigma_sq))
+pred_y <- exp(pred_ln_y)
+
+points(rowMeans(S %*% t(X)), rep(-0.02, nsim), pch = 16, cex = 0.3)
+points(pred_ln_y, rep(0, nsim*nrow(X)), pch = 16, cex = 0.3)
+
+points(pred_y, rep(0.47, nsim*nrow(X)), pch = 16, cex = 0.3)
+points(rowMeans(pred_y), rep(0.49, nsim), pch = 16, cex = 0.3)
+points(apply(pred_y, 1, median), rep(0.51, nsim), pch = 16, cex = 0.3)
+points(rowMeans(exp(Xb)), rep(0.53, nsim), pch = 16, cex = 0.3)
 
 simulate_exp_ci <- function(nsim, distribution, N = 1000) {
   pred_y <- list()
@@ -132,6 +157,10 @@ points(sapply(pred_y, median),
        pch = 16,
        cex = 0.3)
 points(exp(sim_ln_y), rep(0.54, 1000), pch = 16, cex = 0.4)
+
+mean(exp(sim_ln_y))
+mean(sapply(pred_y, mean))
+
 
 
 reg_int <- lm(ln_y ~ 1)
