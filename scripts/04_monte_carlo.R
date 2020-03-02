@@ -2,7 +2,7 @@ source("scripts/00_setup.R")
 source("scripts/03_sim_function.R")
 set.seed(200226)
 # population size
-pop_size <- 10000
+pop_size <- 100000
 
 n_obs <- 1000
 # means
