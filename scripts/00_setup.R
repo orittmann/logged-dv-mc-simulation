@@ -8,7 +8,8 @@ pkgs <-
   c("MASS",
     "scales",
     "viridis",
-    "dplyr")
+    "dplyr",
+    "haven")
 
 ## Install uninstalled packages
 lapply(pkgs[!(pkgs %in% installed.packages())], install.packages)

@@ -53,7 +53,7 @@ setup_pop <-
     return(df)
   }
 
-ff <- "y~x1*x2"
+ff <- "y~x1+x2"
 n <- 1000
 
 
@@ -63,7 +63,7 @@ pop_df <-
     ff,
     zero_centered = F,
     type = c("num", "bin"),
-    coefs = c(5, 0.5,-5.5, 0.4),
+    coefs = c(3, 0.7,-2),
     noise_variance = 1.5
   )
 dev.off()
@@ -84,10 +84,10 @@ mm <- model.matrix(tmp_ff, data = mf)
 source("scripts/03_sim_function.R")
 
 scenario_1 <-
-  cbind(1, seq(min(pop_df$x1), max(pop_df$x1), by = 0.2), 1, seq(min(pop_df$x1), max(pop_df$x1), by = 0.2))
+  cbind(1, seq(min(pop_df$x1), max(pop_df$x1), by = 0.2), 1)
 
 pred_1 <-
-  pred_values(
+  pred_values(M = 1000,
     model_theta = coef(reg_ia),
     model_vcov = vcov(reg_ia),
     scenario = scenario_1,
@@ -100,10 +100,10 @@ sum_pred_1 <- summarize_sim_values(pred_1)
 sum_exp_pred_1 <- summarize_sim_values(exp_pred_1)
 
 scenario_0 <-
-  cbind(1, seq(min(pop_df$x1), max(pop_df$x1), by = 0.2), 0, 0)
+  cbind(1, seq(min(pop_df$x1), max(pop_df$x1), by = 0.2), 0)
 
 pred_0 <-
-  pred_values(
+  pred_values(M = 1000,
     model_theta = coef(reg_ia),
     model_vcov = vcov(reg_ia),
     scenario = scenario_0,
@@ -119,6 +119,10 @@ sum_exp_pred_0 <- summarize_sim_values(exp_pred_0)
 
 
 
+
+
+
+#pdf("figures/dummy_plot.pdf", width = 16)
 m <-matrix(c(1, 2, 3, 4), ncol = 2, byrow = T)
 layout(m,
        widths = c(1,1))
@@ -197,8 +201,8 @@ lines(
   lwd = 1,
   lty = "dashed"
 )
-text(9, 3, labels = "FEMALE = 1", col = col_vec[2], font = 2)
-text(4, 12, labels = "FEMALE = 0", col = col_vec[1], font = 2)
+text(10, 3, labels = "FEMALE = 1", col = col_vec[2], font = 2)
+text(3, 10, labels = "FEMALE = 0", col = col_vec[1], font = 2)
 
 par(mar = c(5,     # bottom (5)
             6.5,   # left   (4)
@@ -207,7 +211,7 @@ par(mar = c(5,     # bottom (5)
 ),
 xpd = T)
 
-ylimits <- c(0, max(c(as.numeric(apply(cbind(sum_exp_pred_1, sum_exp_pred_0), 2, quantile, c(0.025, 0.5, 0.975))),exp(pop_df$y))))
+ylimits <- c(0, max(apply(cbind(sum_exp_pred_1, sum_exp_pred_0), 2, quantile, c(0.025, 0.5, 0.975))))
 
 plot(
   pop_df$x1,
@@ -225,8 +229,7 @@ plot(
 )
 box(lty = "solid", col = "grey50")
 
-
-marks <- formatC(round(seq(0, exp(max(pop_df$y)), length.out = 6), 0), "d")
+marks <- formatC(round(seq(0, max(apply(cbind(sum_exp_pred_1, sum_exp_pred_0), 2, quantile, c(0.025, 0.5, 0.975))), length.out = 5), 0), "d")
 axis(2, las = 2, at = marks, labels = marks,
      col.axis = "grey50", col = "grey50")
 
@@ -291,7 +294,7 @@ plot(
   apply(fd, 2, mean),
   col = col_vec[1],
   las = 1,
-  ylim = c(0, 6),
+  ylim = c(0, 4),
   lwd = 2, 
   main = "",
   ylab = "",
@@ -337,7 +340,7 @@ lines(
 
 
 exp_fd <- sum_exp_pred_0 - sum_exp_pred_1
-ylimits <- c(min(apply(exp_fd, 2, quantile, c(0.025, 0.5, 0.975))), max(apply(exp_fd, 2, quantile, c(0.025, 0.5, 0.975))))
+ylimits <- c(0, max(apply(exp_fd, 2, quantile, c(0.025, 0.5, 0.975))))
 plot(
   seq(min(pop_df$x1), max(pop_df$x1), by = 0.2),
   apply(exp_fd, 2, mean),
@@ -386,5 +389,6 @@ lines(
   lwd = 1,
   lty = "dashed"
 )
-dev.copy(pdf, "figures/interaction_example.pdf", width = 16, height = 9)
+dev.copy(pdf, "figures/dummy_example.pdf", width = 16, height = 9)
 dev.off()
+
