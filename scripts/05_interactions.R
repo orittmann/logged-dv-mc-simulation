@@ -147,20 +147,59 @@ plot(
   xaxt = "n",
   bty = "n"
 )
-box(lty = "solid", col = "grey50")
-axis(2, las = 2, 
-     col.axis = "grey50", col = "grey50")
-axis(1, 
-     col.axis = "grey50", col = "grey50")
+axis(
+  1,
+  at = c(min(pop_df$x1), max(pop_df$x1)),
+  labels = round(c(min(pop_df$x1), max(pop_df$x1)), 2),
+  lwd = 0,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
+axis(
+  1,
+  at = pretty(c(min(pop_df$x1), max(pop_df$x1)))[c(2:(length(pretty(c(
+    min(pop_df$x1), max(pop_df$x1)
+  ))) - 1))],
+  lwd = 0.5,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
+
+axis(
+  2,
+  at = c(min(pop_df$y), max(pop_df$y)),
+  labels = round(c(min(pop_df$y), max(pop_df$y)), 2),
+  lwd = 0,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey",
+  las = 1
+)
+axis(
+  2,
+  at = pretty(c(min(pop_df$y), max(pop_df$y)))[c(2:(length(pretty(c(
+    min(pop_df$y), max(pop_df$y)
+  ))) - 1))],
+  lwd = 0.5,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey",
+  las = 1
+)
 mtext(2, 
       text = "log(INCOME)", 
-      line = 4.1)
+      line = 4.1,
+      col = "grey")
+
 mtext(3, 
       text = expression(bold("Log-Scale")), 
-      line = 0.4)
+      line = 0.4,
+      col = "grey")
 mtext(1, 
       text = "EDUCATION",
-      line = 3.5)
+      line = 3.5, col = "grey")
 lines(seq(min(pop_df$x1), max(pop_df$x1), by = 0.2),
       apply(sum_pred_1, 2, mean),
       col = col_vec[2],
@@ -207,7 +246,10 @@ par(mar = c(5,     # bottom (5)
 ),
 xpd = T)
 
-ylimits <- c(0, max(c(as.numeric(apply(cbind(sum_exp_pred_1, sum_exp_pred_0), 2, quantile, c(0.025, 0.5, 0.975))),exp(pop_df$y))))
+ylimits <- pretty(c(0, max(c(apply(cbind(sum_exp_pred_1, sum_exp_pred_0), 2, quantile, c(0.025, 0.5, 0.975)),max(exp(pop_df$y))))))[c(1, length(pretty(c(0, max(c(apply(cbind(sum_exp_pred_1, sum_exp_pred_0), 2, quantile, c(0.025, 0.5, 0.975)),max(exp(pop_df$y))))))))]
+
+
+
 
 plot(
   pop_df$x1,
@@ -221,27 +263,58 @@ plot(
   yaxt = "n",
   xaxt = "n",
   bty = "n",
+  xlim = pretty(c(min(pop_df$x1), max(pop_df$x1)))[c(1, length(pretty(c(min(pop_df$x1), max(pop_df$x1)))))],
   ylim = ylimits
 )
-box(lty = "solid", col = "grey50")
 
+axis(
+  1,
+  at = c(min(pop_df$x1), max(pop_df$x1)),
+  labels = round(c(min(pop_df$x1), max(pop_df$x1)), 2),
+  lwd = 0,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
+axis(
+  1,
+  at = pretty(c(min(pop_df$x1), max(pop_df$x1)))[c(2:(length(pretty(c(
+    min(pop_df$x1), max(pop_df$x1)
+  ))) - 1))],
+  lwd = 0.5,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
 
-marks <- formatC(round(seq(0, exp(max(pop_df$y)), length.out = 6), 0), "d")
-axis(2, las = 2, at = marks, labels = marks,
-     col.axis = "grey50", col = "grey50")
+axis(
+  2,
+  at = c(min(exp(pop_df$y)), max(exp(pop_df$y))),
+  labels = round(c(min(exp(pop_df$y)), max(exp(pop_df$y))), 0),
+  lwd = 0,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey",
+  las = 2
+)
 
-axis(1,
-     col.axis = "grey50", col = "grey50")
+marks <- formatC(pretty(c(0, max(c(apply(cbind(sum_exp_pred_1, sum_exp_pred_0), 2, quantile, c(0.025, 0.5, 0.975)),max(exp(pop_df$y)))))), "d")
+axis(2, las = 2, at = marks[2:(length(marks)-1)], labels = marks[2:(length(marks)-1)],
+     col.axis = "grey", col = "grey", lwd = 0.5, lwd.ticks = 1)
+
 
 mtext(2,
       text = "INCOME", 
-      line = 4.1)
+      line = 4.1,
+      col = "grey")
 mtext(3, 
       text = expression(bold("Original-Scale")), 
-      line = 0.4)
+      line = 0.4,
+      col = "grey")
 mtext(1, 
       text = "EDUCATION",
-      line = 3.5)
+      line = 3.5,
+      col = "grey")
 lines(
   seq(min(pop_df$x1), max(pop_df$x1), by = 0.2),
   apply(sum_exp_pred_1, 2, mean),
@@ -302,31 +375,41 @@ plot(
   bty = "n",
   type = "l"
 )
-box(lty = "solid", col = "grey50")
+#box(lty = "solid", col = "grey50")
 
 axis(2, las = 2, 
-     col.axis = "grey50", col = "grey50")
+     col.axis = "grey", col = "grey", lwd = 0.5,
+     lwd.ticks = 1)
 
-axis(1,
-     col.axis = "grey50", col = "grey50")
+axis(
+  1,
+  at = c(min(pop_df$x1), max(pop_df$x1)),
+  labels = round(c(min(pop_df$x1), max(pop_df$x1)), 2),
+  lwd = 0,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
+axis(
+  1,
+  at = pretty(c(min(pop_df$x1), max(pop_df$x1)))[c(2:(length(pretty(c(
+    min(pop_df$x1), max(pop_df$x1)
+  ))) - 1))],
+  lwd = 0.5,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
 
 mtext(2,
       text = "E(log(INCOME)|FEMALE = 0) - \n  E(log(INCOME)|FEMALE = 1)", 
-      line = 4.1)
+      line = 4.1, col = "grey")
 mtext(3, 
       text = expression(bold("First Difference on Log-Scale")), 
-      line = 0.4)
+      line = 0.4, col = "grey")
 mtext(1, 
       text = "EDUCATION",
-      line = 3.5)
-
-lines(
-  seq(min(pop_df$x1), max(pop_df$x1), by = 0.2),
-  apply(fd, 2, quantile, 0.025),
-  col = col_vec[1],
-  lwd = 1,
-  lty = "dashed"
-)
+      line = 3.5, col = "grey")
 lines(
   seq(min(pop_df$x1), max(pop_df$x1), by = 0.2),
   apply(fd, 2, quantile, 0.975),
@@ -334,7 +417,13 @@ lines(
   lwd = 1,
   lty = "dashed"
 )
-
+lines(
+  seq(min(pop_df$x1), max(pop_df$x1), by = 0.2),
+  apply(fd, 2, quantile, 0.025),
+  col = col_vec[1],
+  lwd = 1,
+  lty = "dashed"
+)
 
 exp_fd <- sum_exp_pred_0 - sum_exp_pred_1
 ylimits <- c(min(apply(exp_fd, 2, quantile, c(0.025, 0.5, 0.975))), max(apply(exp_fd, 2, quantile, c(0.025, 0.5, 0.975))))
@@ -354,23 +443,40 @@ plot(
   type = "l",
   ylim = ylimits
 )
-box(lty = "solid", col = "grey50")
 
 axis(2, las = 2, 
-     col.axis = "grey50", col = "grey50")
+     col.axis = "grey", col = "grey",
+     lwd = 0.5, lwd.ticks = 1)
 
-axis(1,
-     col.axis = "grey50", col = "grey50")
+axis(
+  1,
+  at = c(min(pop_df$x1), max(pop_df$x1)),
+  labels = round(c(min(pop_df$x1), max(pop_df$x1)), 2),
+  lwd = 0,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
+axis(
+  1,
+  at = pretty(c(min(pop_df$x1), max(pop_df$x1)))[c(2:(length(pretty(c(
+    min(pop_df$x1), max(pop_df$x1)
+  ))) - 1))],
+  lwd = 0.5,
+  lwd.ticks = 1,
+  col = "grey",
+  col.axis = "grey"
+)
 
 mtext(2,
       text = "E(INCOME|FEMALE = 0) - \n  E(INCOME|FEMALE = 1)", 
-      line = 4.1)
+      line = 4.1, col = "grey")
 mtext(3, 
       text = expression(bold("First Difference on Original-Scale")), 
-      line = 0.4)
+      line = 0.4, col = "grey")
 mtext(1, 
       text = "EDUCATION",
-      line = 3.5)
+      line = 3.5, col = "grey")
 
 lines(
   seq(min(pop_df$x1), max(pop_df$x1), by = 0.2),
