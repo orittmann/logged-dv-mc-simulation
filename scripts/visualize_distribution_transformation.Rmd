@@ -1,0 +1,521 @@
+---
+title: "Simulate_Logged_DV"
+author: "Oliver Rittmann"
+date: "3/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(viridis)
+```
+
+$$
+\ln(\text{Income}) = \beta_{\text{cons}} + \beta_{\text{edu}}\text{Education} + \epsilon, \text{and} \epsilon \sim N(0, \sigma^2)
+$$
+
+  + $\beta_{cons} = 2.5$
+  + $\beta_{edu} = 0.1$
+  + $\sigma^2 = 1$
+  
+Scenario: 20 years of education
+
+$$
+2.5 + 0.1 \cdot 20 = 4.5
+$$
+
+
+
+```{r}
+x <- c(10, 11, 12, 13,14, 16, 17, 18, 19, 20)
+
+sigma2 <- 1
+N <- length(x)
+
+var_sampling <- sigma2 / (N * sum(x^2) - sum(x)^2) * 
+  (sum(x^2) - 2*20 * sum(x) + 20^2 * N)
+sd_sampling <- sqrt(var_sampling)
+b0 <- 2.5
+b1 <- 0.1
+
+log_E_X <- b0 + b1*20
+
+exp(log_E_X)
+exp(log_E_X + var_sampling/2)
+exp(log_E_X + sigma2/2)
+exp(log_E_X + var_sampling/2 + sigma2/2)
+
+```
+
+
+generate disrtibutions
+
+```{r}
+nsim <- 100000
+
+# sampling distribution of $E(Y | X = 20)$
+E_logY_X <- rnorm(nsim, 4.5, sqrt(var_sampling))
+
+# distribution of $log(Y | X = 20)$
+logY_X <- (log_E_X + rnorm(nsim, 0, sigma2))
+
+# distribution of $Y | X = 20$
+Y_X <- exp(logY_X)
+
+# distribution of $med(Y | X = 20)$
+med_Y_X <- exp(E_logY_X)
+
+# distribution of $E(Y | X = 20)$
+E_Y_X <- exp(E_logY_X + sigma2/2)
+```
+
+
+# all in one plot
+
+```{r}
+
+pdf("trans_distr.pdf",
+    height = 20)
+
+par(mar = c(5, 2, 4, 2) + 0.1)
+layout(matrix(c(1,1,
+                2,2,
+                3,3,
+                4,5), 
+              nrow = 4,
+              ncol = 2,
+              byrow = TRUE),
+       widths = c(1,1),
+       heights = c(1,1,1,1))
+
+
+# Sampling Distribution of E(log(Y | X = 20))
+
+plot(density(E_logY_X),
+     main = "Sampling Distribution of E(log(Y | X = 20))\n(Expected values on log scale)",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 2,
+     xlim = c(4.5-5, 4.5+5))
+axis(side = 1,
+     at = c(1:8))
+# mean and median of the distribution
+points(x = 4.5, y = 0,
+       lwd = 2,
+       cex = 1.5,
+       col = viridis(3)[1],
+       pch = 1)
+points(x = 4.5, y = 0,
+       lwd = 1.5,
+       cex = 1.5,
+       col = viridis(3)[2],
+       pch = 4)
+text(x = 4.5, 
+     y = 0,
+     pos = 3,
+     labels = "4.5",
+     cex = 1,
+     offset = 1)
+
+
+plot(density(logY_X),
+     main = "Distribution of log(Y | X = 20)\n(Predicted values on log scale)",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 2,
+     xlim = c(4.5-5, 4.5+5))
+axis(side = 1,
+     at = c(1:8))
+# mean and median of the distribution
+points(x = 4.5, y = 0,
+       lwd = 2,
+       cex = 1.5,
+       col = viridis(3)[1],
+       pch = 1)
+points(x = 4.5, y = 0,
+       lwd = 1.5,
+       cex = 1.5,
+       col = viridis(3)[2],
+       pch = 4)
+text(x = 4.5, 
+     y = 0,
+     pos = 3,
+     labels = "4.5",
+     cex = 1,
+     offset = 1)
+
+plot(density(Y_X),
+     main = "Distribution of Y | X = 20\n(Predicted values on original scale)",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 2,
+     xlim = c(0,800))
+# mean and median of the distribution
+points(x = mean(Y_X), 
+       y = 0,
+       lwd = 2,
+       cex = 1.5,
+       col = viridis(3)[1],
+       pch = 1)
+points(x = median(Y_X), y = 0,
+       lwd = 1.5,
+       cex = 1.5,
+       col = viridis(3)[2],
+       pch = 4)
+text(x = c(mean(Y_X), median(Y_X)), 
+     y = c(0,0),
+     pos = 3,
+     labels = c("148.41", "90.02"),
+     cex = 1,
+     col = viridis(3)[1:2],
+     offset = 1)
+
+plot(density(med_Y_X),
+     main = "Sampling Distribution of median(Y | X = 20)\n(Median values on original scale)",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 2,
+     col = viridis(3)[2],
+     xlim = c(0,500))
+# mean and median of the distribution
+points(x = mean(med_Y_X), 
+       y = 0,
+       lwd = 2,
+       cex = 1.5,
+       pch = 1)
+points(x = median(med_Y_X), 
+       y = 0,
+       lwd = 1.5,
+       cex = 1.5,
+       pch = 4)
+text(x = c(mean(med_Y_X) + 30, median(med_Y_X) - 25), 
+     y = 0,
+     pos = 3,
+     labels = c("106.02", "90.02"),
+     cex = 1,
+     offset = 1)
+
+plot(density(E_Y_X),
+     main = "Sampling Distribution of E(Y | X = 20)\n(Expected values on original scale)",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 2,
+     col = viridis(3)[1],
+     xlim = c(0,500))
+# mean and median of the distribution
+points(x = mean(E_Y_X), 
+       y = 0,
+       lwd = 2,
+       cex = 1.5,
+       pch = 1)
+points(x = median(E_Y_X), 
+       y = 0,
+       lwd = 1.5,
+       cex = 1.5,
+       pch = 4)
+text(x = c(mean(E_Y_X) + 24, median(E_Y_X) - 30), 
+     y = 0,
+     pos = 3,
+     labels = c("174.80", "148.41"),
+     cex = 1,
+     offset = 1)
+
+dev.off()
+```
+
+
+Single Distributions
+
+```{r}
+
+pdf("Figures/E(logY).pdf",
+    height = 3)
+par(mar = c(0, 0, 0, 0) + 0.1)
+plot(density(E_logY_X),
+     zero.line = F,
+     main = "",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 4,
+     xlim = c(4.5-5, 4.5+5))
+# mean and median of the distribution
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = viridis(3)[1],
+       pch = 1)
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = viridis(3)[2],
+       pch = 4)
+#text(x = 4.5, 
+#     y = 0,
+#     pos = 3,
+#     labels = "4.5",
+#     cex = 1.5,
+#     offset = 1)
+dev.off()
+```
+
+```{r}
+pdf("Figures/Pred(logY).pdf",
+    height = 3)
+par(mar = c(0, 0, 0, 0) + 0.1)
+
+plot(density(logY_X),
+     zero.line = F,
+     main = "",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 4,
+     xlim = c(4.5-5, 4.5+5))
+# mean and median of the distribution
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = viridis(3)[1],
+       pch = 1)
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = viridis(3)[2],
+       pch = 4)
+#text(x = 4.5, 
+#     y = 0,
+#     pos = 3,
+#     labels = "4.5",
+#     cex = 1,
+#     offset = 1)
+
+dev.off()
+
+```
+
+```{r}
+pdf("Figures/Pred(Y).pdf",
+    height = 3)
+par(mar = c(0, 0, 0, 0) + 0.1)
+plot(density(Y_X),
+     zero.line = F,
+     main = "",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 4,
+     xlim = c(0,800))
+# mean and median of the distribution
+points(x = mean(Y_X), 
+       y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = viridis(3)[1],
+       pch = 1)
+points(x = median(Y_X), y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = viridis(3)[2],
+       pch = 4)
+#text(x = c(mean(Y_X), median(Y_X)), 
+#     y = c(0,0),
+#     pos = 3,
+#     labels = c("148.41", "90.02"),
+#     cex = 1,
+#     col = viridis(3)[1:2],
+#     offset = 1)
+dev.off()
+
+```
+
+```{r}
+pdf("Figures/Med(Y).pdf",
+    height = 3)
+par(mar = c(0, 0, 0, 0) + 0.1)
+plot(density(med_Y_X),
+     zero.line = F,
+     main = "",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 4,
+     col = viridis(3)[2],
+     xlim = c(0,800))
+# mean and median of the distribution
+points(x = mean(med_Y_X), 
+       y = 0,
+       lwd = 3,
+       cex = 2.5,
+       pch = 1)
+points(x = median(med_Y_X), 
+       y = 0,
+       lwd = 3,
+       cex = 2.5,
+       pch = 4)
+#text(x = c(mean(med_Y_X) + 30, median(med_Y_X) - 25), 
+#     y = 0,
+#     pos = 3,
+#     labels = c("106.02", "90.02"),
+#     cex = 1,
+#     offset = 1)
+dev.off()
+
+```
+
+```{r}
+pdf("Figures/E(Y).pdf",
+    height = 3)
+par(mar = c(0, 0, 0, 0) + 0.1)
+plot(density(E_Y_X),
+     zero.line = F,
+     main = "",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 4,
+     col = viridis(3)[1],
+     xlim = c(0,800))
+# mean and median of the distribution
+points(x = mean(E_Y_X), 
+       y = 0,
+       lwd = 3,
+       cex = 2.5,
+       pch = 1)
+points(x = median(E_Y_X), 
+       y = 0,
+       lwd = 3,
+       cex = 2.5,
+       pch = 4)
+#text(x = c(mean(E_Y_X) + 24, median(E_Y_X) - 30), 
+#     y = 0,
+#     pos = 3,
+#     labels = c("174.80", "148.41"),
+#     cex = 1,
+#     offset = 1)
+
+dev.off()
+```
+
+pred Y not logged
+
+```{r}
+pdf("Figures/Pred(logY)_grey.pdf",
+    height = 3)
+par(mar = c(0, 0, 0, 0) + 0.1)
+
+plot(density(logY_X),
+     zero.line = F,
+     main = "",
+     font.main = 1,
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 4,
+     xlim = c(4.5-5, 4.5+5),
+     col = "grey")
+# mean and median of the distribution
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = "grey",
+       pch = 1)
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = "grey",
+       pch = 4)
+#text(x = 4.5, 
+#     y = 0,
+#     pos = 3,
+#     labels = "4.5",
+#     cex = 1,
+#     offset = 1)
+
+dev.off()
+```
+
+E(Y) not logged
+
+```{r}
+pdf("Figures/E(logY)_grey.pdf",
+    height = 3)
+par(mar = c(0, 0, 0, 0) + 0.1)
+plot(density(E_logY_X),
+     zero.line = F,
+     main = "",
+     font.main = 1,
+     col = "grey",
+     type = "l",
+     yaxt = "n",
+     xaxt = "n",
+     xlab = "",
+     ylab = "",
+     bty = "n",
+     lwd = 4,
+     xlim = c(4.5-5, 4.5+5))
+# mean and median of the distribution
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = "grey",
+       pch = 1)
+points(x = 4.5, y = 0,
+       lwd = 3,
+       cex = 2.5,
+       col = "grey",
+       pch = 4)
+#text(x = 4.5, 
+#     y = 0,
+#     pos = 3,
+#     labels = "4.5",
+#     cex = 1.5,
+#     offset = 1)
+dev.off()
+```
+

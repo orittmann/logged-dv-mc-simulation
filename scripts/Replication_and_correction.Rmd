@@ -1,0 +1,628 @@
+---
+title: "Replication Fouirnaies & Hall 2018"
+output: html_document
+---
+
+
+```{r}
+library(MASS)
+library(svMisc)
+library(scales)
+
+load("../processed-data/nominees_merged.Rdata")
+```
+
+Replication Regression Model 4 (Table 2)
+
+```{r}
+ols.frame <- na.omit(subset(nominees_merged, 
+                            select = c(logdist, signedagency, sameside, dim1, 
+                                       dim2, dim1_alt, dim2_alt,
+                                       dim1_nofixed, dim2_nofixed,
+                                       pres_fil_dist,
+                                       term_timediffyear, toptier, 
+                                       midtier, first.hundred,
+                                       first.term, pres.approval,
+                                       pres, nom_fil_dist)))
+
+m4 <- lm(logdist ~ signedagency*sameside + dim1 + dim2 + 
+     term_timediffyear + toptier + midtier + 
+     pres_fil_dist + first.hundred + 
+     first.term + pres.approval, 
+     data = ols.frame)
+
+summary(m4)
+```
+
+Replicate Left Plot Figure 4
+
+
+```{r}
+nsim = 10000
+
+fig4.coefs <- mvrnorm(nsim, 
+                      coef(m4),
+                      vcov(m4))
+
+# Set up scenario
+
+
+n_range <- 101
+
+sd_range <- seq(-2, 2, length.out = n_range)
+
+range_ind <- seq(mean(nominees_merged$dim1, na.rm = TRUE) - 2*sd(nominees_merged$dim1, na.rm = TRUE), 
+                     mean(nominees_merged$dim1, na.rm = TRUE) + 2*sd(nominees_merged$dim1, na.rm = TRUE), 
+                     length.out = n_range)
+
+range_div <- seq(mean(nominees_merged$pres_fil_dist, na.rm = TRUE) - 2*sd(nominees_merged$pres_fil_dist, na.rm = TRUE), 
+                    mean(nominees_merged$pres_fil_dist, na.rm = TRUE) + 2*sd(nominees_merged$pres_fil_dist, na.rm = TRUE), 
+                    length.out = n_range)
+
+model_data <- m4$model
+
+scenario_dim <- data.frame(1,
+                           "signedagency" = mean(model_data[,"signedagency"]),
+                           "sameside" = mean(model_data[,"sameside"]),
+                           "dim1" = range_ind,
+                           "dim2" = mean(model_data[,"dim2"]),
+                           "term_timediffyear" = mean(model_data[,"term_timediffyear"]),
+                           "toptier" = 0,
+                           "midtier" = 0,
+                           "pres_fil_dist" = mean(model_data[,"pres_fil_dist"]),
+                           "first.hundred" = 0,
+                           "first.term" = 0,
+                           "pres.approval" = mean(model_data[,"pres.approval"]),
+                           "signedagency * sameside" = mean(model_data[,"signedagency"] *
+                                                              model_data[,"sameside"]))
+
+scenario_dim <- as.matrix(scenario_dim)
+
+scenario_div <- data.frame(1,
+                           "signedagency" = mean(model_data[,"signedagency"]),
+                           "sameside" = mean(model_data[,"sameside"]),
+                           "dim1" = mean(model_data[,"dim1"]),
+                           "dim2" = mean(model_data[,"dim2"]),
+                           "term_timediffyear" = mean(model_data[,"term_timediffyear"]),
+                           "toptier" = 0,
+                           "midtier" = 0,
+                           "pres_fil_dist" = range_div,
+                           "first.hundred" = 0,
+                           "first.term" = 0,
+                           "pres.approval" = mean(model_data[,"pres.approval"]),
+                           "signedagency * sameside" = mean(model_data[,"signedagency"] *
+                                                              model_data[,"sameside"]))
+
+scenario_div <- as.matrix(scenario_div)
+
+# Calculate EV (logged)
+
+EV1_logged <- fig4.coefs %*% t(scenario_dim)
+EV2_logged <- fig4.coefs %*% t(scenario_div)
+
+# unlog (this is incorrect!)
+
+EV1 <- exp(EV1_logged)
+EV2 <- exp(EV2_logged)
+
+
+# Transform to Empirical percentile Scale
+
+ecdf_nom_pres_diff <- ecdf(unique(nominees_merged$nom_pres_diff))
+
+EV1_ecdf <- apply(EV1, 2, ecdf_nom_pres_diff)
+EV1_ecdf_qu <- apply(EV1_ecdf, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+EV2_ecdf <- apply(EV2, 2, ecdf_nom_pres_diff)
+EV2_ecdf_qu <- apply(EV2_ecdf, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+
+# Loess
+
+EV1_ecdf_qu_loess <- rbind(predict(loess(EV1_ecdf_qu[1,] ~ sd_range)),
+                           predict(loess(EV1_ecdf_qu[2,] ~ sd_range)),
+                           predict(loess(EV1_ecdf_qu[3,] ~ sd_range)))
+
+EV2_ecdf_qu_loess <- rbind(predict(loess(EV2_ecdf_qu[1,] ~ sd_range)),
+                           predict(loess(EV2_ecdf_qu[2,] ~ sd_range)),
+                           predict(loess(EV2_ecdf_qu[3,] ~ sd_range)))
+
+# Plot
+
+par(mfrow = c(1, 2))
+
+# Plot 1: Agency Decision-Maker Independence
+
+plot(sd_range, EV1_ecdf_qu_loess[2,],
+     type = "n",
+     ylim = c(0.33, 0.61),
+     xlab = "",
+     ylab = "Expected Nominee−President Ideological Divergence")
+polygon(c(rev(sd_range), sd_range), c(rev(EV1_ecdf_qu_loess[3,]), EV1_ecdf_qu_loess[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV1_ecdf_qu_loess[2,])
+
+# Plot 2: President-Filibuster Divergence
+
+plot(sd_range, EV2_ecdf_qu_loess[2,],
+     type = "n",
+     ylim = c(0.33, 0.61),
+     xlab = "",
+     ylab = "")
+polygon(c(rev(sd_range), sd_range), c(rev(EV2_ecdf_qu_loess[3,]), EV2_ecdf_qu_loess[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV2_ecdf_qu_loess[2,])
+
+
+
+
+```
+
+Correction of Figure 4
+
+```{r}
+
+# Calculate EV (logged)
+
+EV1_logged <- fig4.coefs %*% t(scenario_dim)
+EV2_logged <- fig4.coefs %*% t(scenario_div)
+
+# Get sigma
+
+sigma_est <- summary(m4)$sigma
+
+# empty dataframes to store unlogged expected values
+
+EV1_unlogged <- matrix(nrow = dim(EV1_logged)[1],
+                       ncol = dim(EV1_logged)[2])
+EV1_unlogged_W <- matrix(nrow = dim(EV1_logged)[1],
+                         ncol = dim(EV1_logged)[2])
+
+EV2_unlogged <- matrix(nrow = dim(EV2_logged)[1],
+                       ncol = dim(EV2_logged)[2])
+EV2_unlogged_W <- matrix(nrow = dim(EV2_logged)[1],
+                         ncol = dim(EV2_logged)[2])
+
+
+# Get expected values including Step 4 & 5 King, Tombz, Wittenberg (2000)
+
+sigma <- summary(m4)$sigma
+
+pb = txtProgressBar(min = 0, max = length(dim(EV1_unlogged)[1]), initial = 0) 
+
+for (i in 1:dim(EV1_unlogged)[1]) {
+  for (k in 1:dim(EV1_unlogged)[2]){
+    EV1_unlogged[i, k] <- mean(exp(EV1_logged[i, k] + rnorm(10000, 0, sigma_est)))
+    EV1_unlogged_W[i, k] <- exp(EV1_logged[i, k]) * exp(sigma^2 / 2)
+  }
+  progress(i, dim(EV1_unlogged)[1])
+}
+
+for (i in 1:dim(EV2_unlogged)[1]) {
+  for (k in 1:dim(EV2_unlogged)[2]){
+    EV2_unlogged[i, k] <- mean(exp(EV2_logged[i, k] + rnorm(10000, 0, sigma_est)))
+    EV2_unlogged_W[i, k] <- exp(EV2_logged[i, k]) * exp(sigma^2 / 2)
+  }
+  progress(i, dim(EV2_unlogged)[1])
+}
+
+# Transform to Empirical percentile Scale
+
+ecdf_nom_pres_diff <- ecdf(unique(nominees_merged$nom_pres_diff))
+
+EV1_ecdf_correct <- apply(EV1_unlogged, 2, ecdf_nom_pres_diff)
+EV1_ecdf_qu_correct <- apply(EV1_ecdf_correct, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+EV2_ecdf_correct <- apply(EV2_unlogged, 2, ecdf_nom_pres_diff)
+EV2_ecdf_qu_correct <- apply(EV2_ecdf_correct, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+# Wooldridge
+
+EV1_ecdf_W <- apply(EV1_unlogged_W, 2, ecdf_nom_pres_diff)
+EV1_ecdf_qu_W <- apply(EV1_ecdf_W, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+EV2_ecdf_W <- apply(EV2_unlogged_W, 2, ecdf_nom_pres_diff)
+EV2_ecdf_qu_W <- apply(EV2_ecdf_W, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+
+
+
+
+# Loess
+
+EV1_ecdf_qu_loess_correct <- rbind(predict(loess(EV1_ecdf_qu_correct[1,] ~ sd_range)),
+                                   predict(loess(EV1_ecdf_qu_correct[2,] ~ sd_range)),
+                                   predict(loess(EV1_ecdf_qu_correct[3,] ~ sd_range)))
+
+EV2_ecdf_qu_loess_correct <- rbind(predict(loess(EV2_ecdf_qu_correct[1,] ~ sd_range)),
+                                   predict(loess(EV2_ecdf_qu_correct[2,] ~ sd_range)),
+                                   predict(loess(EV2_ecdf_qu_correct[3,] ~ sd_range)))
+
+EV1_ecdf_qu_loess_W <- rbind(predict(loess(EV1_ecdf_qu_W[1,] ~ sd_range)),
+                                   predict(loess(EV1_ecdf_qu_W[2,] ~ sd_range)),
+                                   predict(loess(EV1_ecdf_qu_W[3,] ~ sd_range)))
+
+EV2_ecdf_qu_loess_W <- rbind(predict(loess(EV2_ecdf_qu_W[1,] ~ sd_range)),
+                                   predict(loess(EV2_ecdf_qu_W[2,] ~ sd_range)),
+                                   predict(loess(EV2_ecdf_qu_W[3,] ~ sd_range)))
+
+# Plot
+
+
+par(mfrow = c(1, 2))
+
+# Plot 1: Agency Decision-Maker Independence
+
+plot(sd_range, EV1_ecdf_qu_loess_correct[2,],
+     type = "n",
+     ylim = c(0.33, 0.85),
+     xlab = "",
+     ylab = "Expected Nominee−President Ideological Divergence")
+polygon(c(rev(sd_range), sd_range), c(rev(EV1_ecdf_qu_loess_correct[3,]), EV1_ecdf_qu_loess_correct[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV1_ecdf_qu_loess_correct[2,])
+
+# Wooldridge
+lines(sd_range, EV1_ecdf_qu_loess_W[2,],
+      col = "red",
+      lty = "dashed")
+lines(sd_range, EV1_ecdf_qu_loess_W[1,],
+      col = "red",
+      lty = "dashed")
+lines(sd_range, EV1_ecdf_qu_loess_W[3,],
+      col = "red",
+      lty = "dashed")
+
+# Plot 2: President-Filibuster Divergence
+
+plot(sd_range, EV2_ecdf_qu_loess_correct[2,],
+     type = "n",
+     ylim = c(0.33, 0.85),
+     xlab = "",
+     ylab = "")
+polygon(c(rev(sd_range), sd_range), c(rev(EV2_ecdf_qu_loess_correct[3,]), EV2_ecdf_qu_loess_correct[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV2_ecdf_qu_loess_correct[2,])
+
+# Wooldridge
+lines(sd_range, EV2_ecdf_qu_loess_W[2,],
+      col = "red",
+      lty = "dashed")
+lines(sd_range, EV2_ecdf_qu_loess_W[1,],
+      col = "red",
+      lty = "dashed")
+lines(sd_range, EV2_ecdf_qu_loess_W[3,],
+      col = "red",
+      lty = "dashed")
+```
+
+Correction with Wooldridge Fix
+
+```{r}
+
+sigma <- summary(m4)$sigma
+
+EV1_W <- exp(EV1_logged) * exp(sigma^2 /2)
+EV2_W <- exp(EV2_logged) * exp(sigma^2 /2)
+
+table(EV1_W == EV1 * exp(sigma^2 /2))
+
+EV1_W_qu <- apply(EV1_W, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+
+
+# Transform to Empirical percentile Scale
+
+ecdf_nom_pres_diff <- ecdf(unique(nominees_merged$nom_pres_diff))
+
+EV1_ecdf_W <- apply(EV1_W, 2, ecdf_nom_pres_diff)
+EV1_ecdf_qu_W <- apply(EV1_ecdf_W, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+EV2_ecdf_W <- apply(EV2_W, 2, ecdf_nom_pres_diff)
+EV2_ecdf_qu_W <- apply(EV2_ecdf_W, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+
+# Loess
+
+EV1_ecdf_qu_loess_W <- rbind(predict(loess(EV1_ecdf_qu_W[1,] ~ sd_range)),
+                           predict(loess(EV1_ecdf_qu_W[2,] ~ sd_range)),
+                           predict(loess(EV1_ecdf_qu_W[3,] ~ sd_range)))
+
+EV2_ecdf_qu_loess_W <- rbind(predict(loess(EV2_ecdf_qu_W[1,] ~ sd_range)),
+                           predict(loess(EV2_ecdf_qu_W[2,] ~ sd_range)),
+                           predict(loess(EV2_ecdf_qu_W[3,] ~ sd_range)))
+
+# Plot
+
+par(mfrow = c(1, 2))
+
+# Plot 1: Agency Decision-Maker Independence
+
+plot(sd_range, EV1_ecdf_qu_loess_W[2,],
+     type = "n",
+     ylim = c(0.33, 0.85),
+     xlab = "",
+     ylab = "Expected Nominee−President Ideological Divergence")
+polygon(c(rev(sd_range), sd_range), c(rev(EV1_ecdf_qu_loess_W[3,]), EV1_ecdf_qu_loess_W[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV1_ecdf_qu_loess_W[2,])
+
+# Plot 2: President-Filibuster Divergence
+
+plot(sd_range, EV2_ecdf_qu_loess_W[2,],
+     type = "n",
+     ylim = c(0.33, 0.85),
+     xlab = "",
+     ylab = "")
+polygon(c(rev(sd_range), sd_range), c(rev(EV2_ecdf_qu_loess_W[3,]), EV2_ecdf_qu_loess_W[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV2_ecdf_qu_loess_W[2,])
+```
+
+
+
+Correct and incorrect in one plot
+
+```{r}
+pdf("../figures/replication_plot.pdf",
+    width = 10)
+
+m <- cbind(1, 2)
+layout(m,
+       widths = c(1,1))
+
+# Plot 1: Agency Decision-Maker Independence
+par(mar = c(5,     # bottom (5)
+            6.5,   # left   (4)
+            2,     # top    (4)
+            0.5    # right  (2)
+            ),
+    xpd = T)
+
+plot(sd_range, EV1_ecdf_qu_correct[2,],
+     type = "n",
+     ylim = c(0.33, 0.85),
+     main = "",
+     xlab = "",
+     ylab = "",
+     yaxt = "n",
+     xaxt = "n",
+     bty = "n")
+box(lty = "solid", col = "grey50")
+axis(2, at = seq(0.35, 0.85, 0.05), las = 2, 
+     col.axis = "grey50", col = "grey50")
+axis(1, at = seq(-2, 2, 1), 
+     col.axis = "grey50", col = "grey50")
+mtext(2, 
+      text = "Expected Nominee-President Ideological Divergence \n (Empirical Percentile Scale)", 
+      line = 4.1)
+mtext(3, 
+      text = expression(bold("Agency Decision-Maker Independence")), 
+      line = 0.4)
+mtext(1, 
+      text = "Value of Independent Variable \n (Number of Standard Deviations from Mean)", 
+      at = 2.3,
+      line = 3.5)
+
+polygon(c(rev(sd_range), sd_range), c(rev(EV1_ecdf_qu_loess_correct[3,]), EV1_ecdf_qu_loess_correct[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV1_ecdf_qu_loess_correct[2,])
+
+# incorrect
+polygon(c(rev(sd_range), sd_range), c(rev(EV1_ecdf_qu_loess[3,]), EV1_ecdf_qu_loess[1,]),
+        col = alpha("red", 0.6),
+        border = NA)
+lines(sd_range, EV1_ecdf_qu_loess[2,])
+
+
+
+
+
+# Plot 2: President-Filibuster Divergence
+par(mar = c(5,       # bottom (5)
+            0.5,     # left   (4)
+            2,       # top    (4) 
+            6.5),    # right  (2)
+    xpd = T)
+
+plot(sd_range, EV2_ecdf_qu_loess_correct[2,],
+     type = "n",
+     ylim = c(0.33, 0.85),
+     main = "",
+     xlab = "",
+     ylab = "",
+     yaxt = "n",
+     xaxt = "n",
+     bty = "n")
+box(lty = "solid", col = 'grey50')
+axis(1, at = seq(-2, 2, 1), 
+     col.axis = "grey50", col = "grey50")
+mtext(3, 
+      text = expression(bold("President-Filibuster Divergence")), 
+      line = 0.4)
+mtext(4,
+      text = c(expression(italic(" Correct \n Transformation: \n E(y)")),
+               expression(italic(" Incorrect \n Transformation: \n exp(E(log(y))"))),
+      at = c(0.76, 0.5),
+      las = 2,
+      line = 0.3)
+polygon(c(rev(sd_range), sd_range), c(rev(EV2_ecdf_qu_loess_correct[3,]), EV2_ecdf_qu_loess_correct[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV2_ecdf_qu_loess_correct[2,])
+
+# incorrect
+polygon(c(rev(sd_range), sd_range), c(rev(EV2_ecdf_qu_loess[3,]), EV2_ecdf_qu_loess[1,]),
+        col = alpha("red", 0.6),
+        border = NA)
+lines(sd_range, EV2_ecdf_qu_loess[2,])
+
+
+dev.off()
+```
+
+
+# Same plot on original scale (instead of empirical percentile scale)
+
+
+```{r}
+
+
+EV1_qu <- apply(EV1, 2, quantile, probs = c(0.025, 0.5, 0.975))
+EV2_qu <- apply(EV2, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+EV1_qu_correct <- apply(EV1_unlogged, 2, quantile, probs = c(0.025, 0.5, 0.975))
+EV2_qu_correct <- apply(EV2_unlogged, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+EV1_W_qu <- apply(EV1_W, 2, quantile, probs = c(0.025, 0.5, 0.975))
+EV2_W_qu <- apply(EV2_W, 2, quantile, probs = c(0.025, 0.5, 0.975))
+
+# Loess
+
+EV1_qu_loess <- rbind(predict(loess(EV1_qu[1,] ~ sd_range)),
+                      predict(loess(EV1_qu[2,] ~ sd_range)),
+                      predict(loess(EV1_qu[3,] ~ sd_range)))
+
+EV2_qu_loess <- rbind(predict(loess(EV2_qu[1,] ~ sd_range)),
+                      predict(loess(EV2_qu[2,] ~ sd_range)),
+                      predict(loess(EV2_qu[3,] ~ sd_range)))
+
+
+EV1_qu_correct_loess <- rbind(predict(loess(EV1_qu_correct[1,] ~ sd_range)),
+                              predict(loess(EV1_qu_correct[2,] ~ sd_range)),
+                              predict(loess(EV1_qu_correct[3,] ~ sd_range)))
+
+EV2_qu_correct_loess <- rbind(predict(loess(EV2_qu_correct[1,] ~ sd_range)),
+                              predict(loess(EV2_qu_correct[2,] ~ sd_range)),
+                              predict(loess(EV2_qu_correct[3,] ~ sd_range)))
+
+
+pdf("../figures/replication_prior_ecdf.pdf",
+    width = 10)
+m <- cbind(1, 2)
+layout(m,
+       widths = c(1,1))
+
+# Plot 1: Agency Decision-Maker Independence
+par(mar = c(5,     # bottom (5)
+            6.5,   # left   (4)
+            2,     # top    (4)
+            0.5    # right  (2)
+            ),
+    xpd = T)
+
+plot(sd_range, EV1_qu[2,],
+     type = "n",
+     ylim = c(0.1, 0.8),
+     main = "",
+     xlab = "",
+     ylab = "",
+     yaxt = "n",
+     xaxt = "n",
+     bty = "n")
+box(lty = "solid", col = "grey50")
+axis(2, at = seq(0.1, 0.80, 0.1), las = 2, 
+     col.axis = "grey50", col = "grey50")
+axis(1, at = seq(-2, 2, 1), 
+     col.axis = "grey50", col = "grey50")
+mtext(2, 
+      text = "Expected Nominee-President Ideological Divergence", 
+      line = 4.1)
+mtext(3, 
+      text = expression(bold("Agency Decision-Maker Independence")), 
+      line = 0.4)
+mtext(1, 
+      text = "Value of Independent Variable \n (Number of Standard Deviations from Mean)", 
+      at = 2.3,
+      line = 3.5)
+
+polygon(c(rev(sd_range), sd_range), c(rev(EV1_qu_correct_loess[3,]), EV1_qu_correct_loess[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV1_qu_correct_loess[2,])
+
+# incorrect
+polygon(c(rev(sd_range), sd_range), c(rev(EV1_qu[3,]), EV1_qu[1,]),
+        col = alpha("red", 0.6),
+        border = NA)
+lines(sd_range, EV1_qu[2,])
+
+
+
+# Plot 2: President-Filibuster Divergence
+par(mar = c(5,       # bottom (5)
+            0.5,     # left   (4)
+            2,       # top    (4) 
+            6.5),    # right  (2)
+    xpd = T)
+
+
+plot(sd_range, EV2_qu[2,],
+     type = "n",
+     ylim = c(0.1, 0.80),
+     main = "",
+     xlab = "",
+     ylab = "",
+     yaxt = "n",
+     xaxt = "n",
+     bty = "n")
+box(lty = "solid", col = 'grey50')
+axis(1, at = seq(-2, 2, 1), 
+     col.axis = "grey50", col = "grey50")
+mtext(3, 
+      text = expression(bold("President-Filibuster Divergence")), 
+      line = 0.4)
+mtext(4,
+      text = c(expression(italic(" Correct \n Transformation: \n E(y)")),
+               expression(italic(" Incorrect \n Transformation: \n exp(E(log(y))"))),
+      at = c(0.57, 0.18),
+      las = 2,
+      line = 0.3)
+polygon(c(rev(sd_range), sd_range), c(rev(EV2_qu_correct_loess[3,]), EV2_qu_correct_loess[1,]),
+        col = "gray80",
+        border = NA)
+lines(sd_range, EV2_qu_correct_loess[2,])
+
+# incorrect
+polygon(c(rev(sd_range), sd_range), c(rev(EV2_qu[3,]), EV2_qu[1,]),
+        col = alpha("red", 0.6),
+        border = NA)
+lines(sd_range, EV2_qu[2,])
+
+
+
+dev.off()
+```
+
+
+specific values
+
+```{r}
+
+# Agency Decision-Maker Independence
+EV1_qu_correct[2, sd_range == 0]
+EV1_qu[2, sd_range == 0]
+
+EV1_qu_correct[2, sd_range == 0] - EV1_qu[2, sd_range == 0]
+
+EV1_ecdf_qu_correct[2, sd_range == 0] - EV1_ecdf_qu[2, sd_range == 0]
+
+
+# President-Filibuster Divergence
+EV2_qu_correct[2, sd_range == 0]
+EV2_qu[2, sd_range == 0]
+
+EV2_qu_correct[2, sd_range == 0] - EV2_qu[2, sd_range == 0]
+
+EV2_ecdf_qu_correct[2, sd_range == 0] - EV2_ecdf_qu[2, sd_range == 0]
+```
+
+
+
