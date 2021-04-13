@@ -2,9 +2,9 @@ source("scripts/00_setup.R")
 source("scripts/03_sim_function.R")
 set.seed(200226)
 # population size
-pop_size <- 10000
+pop_size <- 100000
 
-n_obs <- 10
+n_obs <- 1000
 # means
 mus <- c(0, 1)
 
@@ -47,7 +47,7 @@ pop <- gen_pop(
   sigma_est = sigma_est
 )
 
-mc_nsim <- 100
+mc_nsim <- 1000
 aca_mean_coverage <-
   aca_mean_error <-
   aca_median_coverage <-
@@ -55,6 +55,8 @@ aca_mean_coverage <-
   ova_mean_coverage <-
   ova_mean_error <-
   ova_median_coverage <- ova_median_error <- rep(NA, mc_nsim)
+
+ova <- F
 
 for (mc_run in 1:mc_nsim) {
   cat("\n Monte Carlo Simulation. Run: ", mc_run, "\n")
@@ -99,7 +101,7 @@ for (mc_run in 1:mc_nsim) {
     true_median_aca - median(qi_median_aca)
   
   
-  
+  if(ova){
   pv_ova <- pred_values(coef(tmp_reg),
                         vcov(tmp_reg),
                         mm,
@@ -132,7 +134,30 @@ for (mc_run in 1:mc_nsim) {
     true_median_ova <= ci_median_ova[2]
   ova_median_error[mc_run] <-
     true_median_ova - median(qi_median_ova)
+  }
 }
+
+
+res_error <- list(aca_mean_error,
+                  aca_median_error,
+                  ova_mean_error,
+                  ova_median_error)
+
+par(mfrow = c(2, 2))
+lapply(res_error, function(x){
+  hist(x)
+  abline(v = mean(x))
+})
+
+
+res_coverage <- list(aca_mean_coverage,
+                     aca_median_coverage,
+                     ova_mean_coverage,
+                     ova_median_coverage)
+
+sapply(res_coverage, mean)
+
+
 
 res_error <- list(aca_mean_error,
      aca_median_error,
@@ -143,6 +168,7 @@ par(mfrow = c(2, 2))
 lapply(res_error, function(x){
   hist(x)
   abline(v = mean(x))
+  abline(v = median(x), lty = "dashed")
 })
 
 

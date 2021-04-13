@@ -1,0 +1,4 @@
+AJPS_strategic_spending_original.dta (application/x-stata-14) 211498 bytes.
+CODEBOOK.pdf (application/pdf) 442485 bytes.
+readme.txt (text/plain) 315 bytes.
+z_mohr_replication_do.do (application/x-stata-syntax) 13133 bytes.
